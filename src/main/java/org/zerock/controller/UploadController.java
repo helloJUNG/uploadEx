@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.FileCopyUtils;
@@ -26,47 +27,82 @@ import net.coobird.thumbnailator.Thumbnailator;
 @Controller
 @Log4j
 public class UploadController {
-	
+
+	@GetMapping(value= "/download/{fileName}", produces = {MediaType.APPLICATION_OCTET_STREAM_VALUE})
+	@ResponseBody // byte 배열자체가 데이터
+	public ResponseEntity<byte[]> download(@PathVariable("fileName") String fileName) {
+
+		String fName = fileName.substring(0, fileName.lastIndexOf("_"));
+		log.info("FName: " + fName);
+
+		String ext = fileName.substring(fileName.lastIndexOf("_") + 1);
+		log.info("ext: " + ext);
+
+		String total = fName + "." + ext;
+		
+		int under = total.indexOf("_");
+		
+		String totalOrigin = total.substring(under+1);
+		
+		ResponseEntity<byte[]> result = null;
+
+		try {
+			File target = new File("C:\\upload\\" + total);
+
+			String downName= new String(totalOrigin.getBytes("UTF-8"),"ISO-8859-1");
+			
+			HttpHeaders header = new HttpHeaders();
+			header.add("Content-Disposition","attachment; filename=" +downName);
+
+			byte[] arr = FileCopyUtils.copyToByteArray(target);
+			result = new ResponseEntity<>(arr,header,HttpStatus.OK);
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		}
+		return result;
+	}
+
 	@GetMapping("/viewFile/{fileName}")
 	@ResponseBody
 	public ResponseEntity<byte[]> viewFile(@PathVariable("fileName") String fileName) {
-		
+
 		log.info("fileName:" + fileName);
-		
-		String fName = fileName.substring(0,fileName.lastIndexOf("_")); 
+
+		String fName = fileName.substring(0, fileName.lastIndexOf("_"));
 		log.info("FName: " + fName);
-		
-		String ext = fileName.substring(fileName.lastIndexOf("_") +1);
+
+		String ext = fileName.substring(fileName.lastIndexOf("_") + 1);
 		log.info("ext: " + ext);
-		
-		String total = fName + "."  + ext;
-		
+
+		String total = fName + "." + ext;
+
 		ResponseEntity<byte[]> result = null;
-		
+
 		try {
-			File target = new File("C:\\upload\\"+total);
-			
+			File target = new File("C:\\upload\\" + total);
+
 			HttpHeaders header = new HttpHeaders();
 			header.add("Content-type", Files.probeContentType(target.toPath()));
-			
+
 			byte[] arr = FileCopyUtils.copyToByteArray(target);
-			result = new ResponseEntity<>(arr,header,HttpStatus.OK);
-			
+			result = new ResponseEntity<>(arr, header, HttpStatus.OK);
+
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			return null;
 		}
 		return result;
-		
-		
-	}
-	
 
-	@PostMapping(value= "/upload",produces="application/json;charset=utf-8")
+	}
+
+	@PostMapping(value = "/upload", produces = "application/json;charset=utf-8")
 	@ResponseBody
 	public List<UploadDTO> upload(MultipartFile[] files) {
-		
+
 		List<UploadDTO> result = new ArrayList<>();
 
 		for (MultipartFile file : files) {
@@ -74,7 +110,7 @@ public class UploadController {
 			log.info(file.getOriginalFilename());
 			log.info(file.getContentType());
 			log.info(file.getSize());
-			
+
 			UUID uuid = UUID.randomUUID();
 
 			String saveFileName = uuid.toString() + "_" + file.getOriginalFilename();
@@ -92,17 +128,17 @@ public class UploadController {
 				thumbFile.close();
 
 				file.transferTo(saveFile);
-				
+
 				result.add(new UploadDTO(saveFileName, file.getOriginalFilename(),
-						thumbFileName.substring(0,thumbFileName.lastIndexOf(".")), 
-						thumbFileName.substring(thumbFileName.lastIndexOf(".")+1)));
+						thumbFileName.substring(0, thumbFileName.lastIndexOf(".")),
+						thumbFileName.substring(thumbFileName.lastIndexOf(".") + 1)));
 
 			} catch (Exception e) {
 
 				e.printStackTrace();
 			}
 		}
-		
+
 		return result;
 
 	}
